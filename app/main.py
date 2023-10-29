@@ -52,17 +52,21 @@ app.add_middleware(
 
 QDRANT_PATH = "localhost"
 COLLECTION_NAME = "retrieved_pdf"
-
 client = QdrantClient(path=QDRANT_PATH, port=6333)
-client.create_collection(
-    collection_name=COLLECTION_NAME,
-    vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
-)
-qdrant = Qdrant(
-    client=client,
-    collection_name=COLLECTION_NAME,
-    embeddings=EMBEDDING_MODEL
-)
+def qdrants_load(collection_name):
+    collection_names = [collection.name for collection in client.get_collections().collections]
+    if COLLECTION_NAME not in collection_names:
+        client.create_collection(
+            collection_name=COLLECTION_NAME,
+            vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
+        )
+    return Qdrant(
+        client=client,
+        collection_name=collection_name,
+        embeddings=EMBEDDING_MODEL
+    )
+
+
 
 llm = ChatOpenAI(model_name='gpt-3.5-turbo-16k', openai_api_key=settings.OPENAI_API_KEY)
 
@@ -70,13 +74,13 @@ llm = ChatOpenAI(model_name='gpt-3.5-turbo-16k', openai_api_key=settings.OPENAI_
 def read_pdf(input_value: request_models.StorePDF):
     pdf_data = base64.b64decode(input_value.pdf)
     with TemporaryDirectory() as tempdir:
-        file_name = f"{COLLECTION_NAME}.pdf"
+        file_name = f"{tempdir}/1.pdf"
         with open(file_name, "wb") as f:
             f.write(pdf_data)
-        loader = PyPDFLoader(f"{file_name}")
+        loader = PyPDFLoader(f"{tempdir}/1.pdf")
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         pages = loader.load_and_split(text_splitter)
-    # qdrant = qdrants_load(COLLECTION_NAME)
+    qdrant = qdrants_load(COLLECTION_NAME)
     qdrant.add_documents(pages)
 
     return "OK"
@@ -127,8 +131,8 @@ def read_pdf(input_value: request_models.StorePDF):
 #         embeddings=EMBEDDING_MODEL
 #     )
 
-def get_agent_executor(qa_params: request_models.AskAgent):
-
+def get_agent_executor():
+    qdrant = qdrants_load(COLLECTION_NAME)
     retriever = qdrant.as_retriever(
         search_type="similarity",
         search_kwargs={"k": 10}
@@ -147,7 +151,7 @@ def get_agent_executor(qa_params: request_models.AskAgent):
             name="duckduckgo-search",
             func=search.run,
             description="ウェブで最新の情報を検索する必要がある場合に便利です。"
-        )
+        ),
         Tool(
             name=COLLECTION_NAME,
             func=qa.run,
@@ -174,7 +178,7 @@ def get_agent_executor(qa_params: request_models.AskAgent):
 
     MEMORY_KEY = "chat_history"
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "あなたは親切なアシスタントです。Webやユーザーの持つpdfを検索して、ユーザーの質問に答えてください。"),
+        ("system", "あなたは親切なアシスタントです。Webやユーザーの持つpdfを検索して、ユーザーの質問に答えてください。検索する場合は3つ以上のソースを比較して明確に教えてください。"),
         MessagesPlaceholder(variable_name=MEMORY_KEY),
         ("user", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad"),
@@ -196,7 +200,7 @@ chat_history = []
 @app.put("/conversation")
 def conversation(qa_params: request_models.AskAgent):
     message = qa_params.message
-    agent_executor = get_agent_executor(qa_params)
+    agent_executor = get_agent_executor()
     result = agent_executor.invoke({"input": message, "chat_history": chat_history})
     chat_history.append(HumanMessage(content=message))
     chat_history.append(AIMessage(content=result['output']))
