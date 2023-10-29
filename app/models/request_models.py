@@ -1,10 +1,9 @@
 from pydantic import BaseModel
+from typing import List
 
+class StorePDF(BaseModel):
+    pdf
 
-class QA_pdf(BaseModel):
-    collection_name: str
-    pdf: str
-
-class QA(BaseModel):
-    collection_name: str
-    question: str
+class AskAgent(BaseModel):
+    db_name: str
+    message: str

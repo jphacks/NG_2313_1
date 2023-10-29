@@ -4,14 +4,11 @@ uvicorn==0.20.0
 python-dotenv==1.0.0
 openai==0.28.1
 tenacity==8.2.3
-numpy==1.26.0
-pytest==7.4.2
-Pillow==10.0.1
 pytesseract==0.3.10
-arxiv==1.4.8
 langchain ==0.0.305
 tiktoken==0.5.1
 qdrant_client==1.5.4
 logger==1.4
 pypdf
 cryptography
+duckduckgo-search

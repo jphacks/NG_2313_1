@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
 
-class AskQuestionResponse(BaseModel):
+class AgentResponse(BaseModel):
     answer: str
     status: str
