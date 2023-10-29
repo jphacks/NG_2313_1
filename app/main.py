@@ -87,26 +87,26 @@ def read_pdf(input_value: request_models.StorePDF):
 
 
 
-# @app.put("/question")
-# def question(qa_params: request_models.QA):
-#     qdrant = qdrants_load(COLLECTION_NAME)
-#     retriever = qdrant.as_retriever(
-#         search_type="similarity",
-#         search_kwargs={"k": 10}
-#     )
+@app.put("/question")
+def question(qa_params: request_models.AskAgent):
+    qdrant = qdrants_load(COLLECTION_NAME)
+    retriever = qdrant.as_retriever(
+        search_type="similarity",
+        search_kwargs={"k": 10}
+    )
 
-#     qa = RetrievalQAWithSourcesChain.from_chain_type(
-#         llm=OpenAI(model_name='gpt-3.5-turbo-16k', openai_api_key=settings.OPENAI_API_KEY),
-#         chain_type="stuff",
-#         retriever=retriever,
-#         return_source_documents=False,
-#         verbose=False)
+    qa = RetrievalQAWithSourcesChain.from_chain_type(
+        llm=OpenAI(model_name='gpt-3.5-turbo-16k', openai_api_key=settings.OPENAI_API_KEY),
+        chain_type="stuff",
+        retriever=retriever,
+        return_source_documents=False,
+        verbose=False)
 
-#     # 10. 質問に対する解答を取得
-#     result = qa({"question": qa_params.question}, return_only_outputs=True)
+    # 10. 質問に対する解答を取得
+    result = qa({"question": qa_params.question}, return_only_outputs=True)
 
-#     # 12. レスポンスをPUTで返す
-#     return respond_models.AskQuestionResponse(answer=result['answer'], status="ok")
+    # 12. レスポンスをPUTで返す
+    return respond_models.AskQuestionResponse(answer=result['answer'], status="ok")
 
 
 # def qdrants_load(collection_name):
@@ -152,24 +152,12 @@ def get_agent_executor():
             func=search.run,
             description="ウェブで最新の情報を検索する必要がある場合に便利です。"
         ),
-        Tool(
-            name=COLLECTION_NAME,
-            func=qa.run,
-            description="ユーザーが意図したテキストを検索する必要がある場合に便利です。"
-        )
+        # Tool(
+        #     name=COLLECTION_NAME,
+        #     func=qa.run,
+        #     description="ユーザーが意図したテキストを検索する必要がある場合に便利です。"
+        # )
     ]
-        
-    # response_schemas = [
-    #     ResponseSchema(name="answer", description="ユーザーの質問に対する回答"),
-    #     ResponseSchema(name="source", description="ユーザーの質問への回答に使用されるソース。無ければ「無し」。")
-    # ]
-    # output_parser = StructuredOutputParser.from_response_schemas(response_schemas)
-    # format_instructions = output_parser.get_format_instructions()
-    # prompt = PromptTemplate(
-    #     template="ユーザーの質問にできる限り答えてください。\n{format_instructions}\n{question}",
-    #     input_variables=["question"],
-    #     partial_variables={"format_instructions": format_instructions}
-    # )
 
     # memory = ConversationBufferMemory(
     #     memory_key="chat_history",
@@ -178,7 +166,7 @@ def get_agent_executor():
 
     MEMORY_KEY = "chat_history"
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "あなたは親切なアシスタントです。Webやユーザーの持つpdfを検索して、ユーザーの質問に答えてください。検索する場合は3つ以上のソースを比較して明確に教えてください。"),
+        ("system", "あなたは親切なアシスタントです。Webを検索して、ユーザーの質問に答えてください。"),
         MessagesPlaceholder(variable_name=MEMORY_KEY),
         ("user", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad"),
@@ -193,6 +181,7 @@ def get_agent_executor():
         "agent_scratchpad": lambda x: format_to_openai_functions(x['intermediate_steps']),
         "chat_history": lambda x: x["chat_history"]
     } | prompt | llm_with_tools | OpenAIFunctionsAgentOutputParser()
+    # agent = initialize_agent(tools, llm, agent=AgentType.REACT_DOCSTORE, verbose=True)
     return AgentExecutor(agent=agent, tools=tools, verbose=True)
 
 chat_history = []
@@ -204,5 +193,4 @@ def conversation(qa_params: request_models.AskAgent):
     result = agent_executor.invoke({"input": message, "chat_history": chat_history})
     chat_history.append(HumanMessage(content=message))
     chat_history.append(AIMessage(content=result['output']))
-
     return response_models.AgentResponse(answer=result['output'], status="ok")
