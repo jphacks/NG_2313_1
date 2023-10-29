@@ -1,6 +1,7 @@
+import os
 from tempfile import TemporaryDirectory
-
 import requests
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -71,21 +72,21 @@ def qdrants_load(collection_name):
 def read_files_in_pdf_dir():
     docs = []
     for filename in os.listdir("./pdf/"):
-        filepath = os.path.join(directory_path, filename)
+        filepath = os.path.join("./pdf/", filename)
         if filename.endswith('.txt'):
             loader = TextLoader(filepath)
             text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
             pages = loader.load_and_split(text_splitter)
-            docs.append(pages)
+            docs.extend(pages)
         elif filename.endswith('.pdf'):
-            loader = TextLoader(filepath)
+            loader = PyPDFLoader(filepath)
             text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
             pages = loader.load_and_split(text_splitter)
-            contents[file_name] = pages
-            docs.append(pages)
+            docs.extend(pages)
     if len(docs) != 0:
         qdrant = qdrants_load(COLLECTION_NAME)
         qdrant.add_documents(docs)
+        print("succeded to read files!")
 
 read_files_in_pdf_dir()
 llm = ChatOpenAI(model_name='gpt-3.5-turbo-16k', openai_api_key=settings.OPENAI_API_KEY)
