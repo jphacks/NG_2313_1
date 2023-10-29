@@ -1,7 +1,8 @@
 # jphacks2023_backend
 
 ## 概要
-このリポジトリは、JPHACKS2023のバックエンドのリポジトリです。
+このリポジトリは、[NG_2313 T.H.U.R.S.D.A.Y.](https://github.com/jphacks/NG_2313/tree/master)のバックエンドのリポジトリです。
+
 
 ## 使い方
 ### OpenAI APIキーの発行
