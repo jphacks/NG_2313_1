@@ -1,12 +1,17 @@
 # jphacks2023_backend
 
 ## 概要
-- このリポジトリは、JPHACKS2023のバックエンドのリポジトリです。
+このリポジトリは、JPHACKS2023のバックエンドのリポジトリです。
 
-## 実行方法
-実行時.envで設定をする必要があります
-### OpenAPIのキーの発行方法
-  [OpenAIキー発行ページ](https://platform.openai.com/account/api-keys)
+## 開発環境
+- Python 3.10
+- fastAPI 0.100.1
+
+## 使い方
+### OpenAI APIキーの発行
+実行時.envにAPIキーを書く必要があります
+
+[OpenAIキー発行ページ](https://platform.openai.com/account/api-keys)
 
 1. リンクにアクセス 
 2. 2Create a new API keyをクリック 
@@ -17,12 +22,9 @@
 OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-## 開発環境
-- Python 3.10
-- fastAPI 0.100.1
+### Qdrantを起動する
 
-## Qdrantを落とす
-- 以下のコマンドを実行してください。
+dockerをインストールして以下のコマンドを実行してください。
 ```
 docker pull qdrant/qdrant
 docker run -p 6333:6333 \
@@ -30,14 +32,18 @@ docker run -p 6333:6333 \
     qdrant/qdrant
 ```
 
-## 実行方法
-- 以下のコマンドを実行してください。(.env.sampleを参考に.envを作成してください。
+### 文書の配置
+pdfフォルダ直下に読み込ませたいpdfまたはテキストファイルを配置してください。
+なお、デスクトップアプリからアップロードできるのは現状pdfファイルのみです。
+
+### サーバーの起動
+以下のコマンドを実行してください。(.env.sampleを参考に.envを作成してください。
 ```
 $ docker-compose up --build
 ```
 
-## API docs
-- 以下のURLにアクセスすると、APIのドキュメントが見れます。
+### API docs
+以下のURLにアクセスすると、APIのドキュメントが見れます。
 ```
 http://localhost:8000/docs#/
 ```
