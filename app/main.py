@@ -1,6 +1,5 @@
 from tempfile import TemporaryDirectory
 
-import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -11,15 +10,11 @@ from langchain.chat_models import ChatOpenAI
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import Qdrant
 
-from langchain.agents import Tool, load_tools, initialize_agent, AgentType, AgentExecutor
-from langchain.agents.format_scratchpad import format_to_openai_functions
+from langchain.agents import Tool, initialize_agent
 from langchain.agents.output_parsers import OpenAIFunctionsAgentOutputParser
 
-from langchain.memory import ConversationBufferMemory
-from langchain.output_parsers import StructuredOutputParser, ResponseSchema
-from langchain.prompts import PromptTemplate, ChatPromptTemplate, MessagesPlaceholder
+from langchain.chains.conversation.memory import ConversationBufferMemory
 
-from langchain.tools.render import format_tool_to_openai_function
 from langchain.tools import DuckDuckGoSearchRun
 from langchain.schema.messages import HumanMessage, AIMessage
 
@@ -141,7 +136,7 @@ def get_agent_executor():
         llm=llm,
         chain_type="stuff",
         retriever=retriever,
-        return_source_documents=True,
+        # return_source_documents=True,
         verbose=False)
 
     search = DuckDuckGoSearchRun()
@@ -149,16 +144,18 @@ def get_agent_executor():
     tools = [
         Tool(
             name="duckduckgo-search",
+            # name="Search",
             func=search.run,
             description="ウェブで最新の情報を検索する必要がある場合に便利です。"
         ),
         Tool(
             name=COLLECTION_NAME,
+            # name="LookUp",
             func=qa.run,
             description="ユーザーが意図したテキストを検索する必要がある場合に便利です。"
         )
     ]
-        
+
     # response_schemas = [
     #     ResponseSchema(name="answer", description="ユーザーの質問に対する回答"),
     #     ResponseSchema(name="source", description="ユーザーの質問への回答に使用されるソース。無ければ「無し」。")
@@ -171,38 +168,45 @@ def get_agent_executor():
     #     partial_variables={"format_instructions": format_instructions}
     # )
 
-    # memory = ConversationBufferMemory(
-    #     memory_key="chat_history",
-    #     return_messages=True,
-    # )
-
-    MEMORY_KEY = "chat_history"
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "あなたは親切なアシスタントです。Webやユーザーの持つpdfを検索して、ユーザーの質問に答えてください。検索する場合は3つ以上のソースを比較して明確に教えてください。"),
-        MessagesPlaceholder(variable_name=MEMORY_KEY),
-        ("user", "{input}"),
-        MessagesPlaceholder(variable_name="agent_scratchpad"),
-    ])
-
-    llm_with_tools = llm.bind(
-        functions=[format_tool_to_openai_function(t) for t in tools]
+    memory = ConversationBufferMemory(
+        memory_key="chat_history",
+        return_messages=True,
     )
 
-    agent = {
-        "input": lambda x: x["input"],
-        "agent_scratchpad": lambda x: format_to_openai_functions(x['intermediate_steps']),
-        "chat_history": lambda x: x["chat_history"]
-    } | prompt | llm_with_tools | OpenAIFunctionsAgentOutputParser()
-    return AgentExecutor(agent=agent, tools=tools, verbose=True)
+    # MEMORY_KEY = "chat_history"
+    # prompt = ChatPromptTemplate.from_messages([
+    #     ("system", "あなたは親切なアシスタントです。Webやユーザーの持つpdfを検索して、ユーザーの質問に答えてください。"),
+    #     MessagesPlaceholder(variable_name=MEMORY_KEY),
+    #     ("user", "{input}"),
+    #     MessagesPlaceholder(variable_name="agent_scratchpad"),
+    # ])
+
+    # llm_with_tools = llm.bind(
+    #     functions=[format_tool_to_openai_function(t) for t in tools]
+    # )
+
+    # agent = {
+    #     "input": lambda x: x["input"],
+    #     "agent_scratchpad": lambda x: format_to_openai_functions(x['intermediate_steps']),
+    #     "chat_history": lambda x: x["chat_history"]
+    # } | prompt | llm_with_tools | OpenAIFunctionsAgentOutputParser()
+    agent = initialize_agent(tools, llm, agent="conversational-react-description",
+                             verbose=True, handle_parsing_errors=True,
+                             output_parser=OpenAIFunctionsAgentOutputParser(),
+                             handle_parsing_errors=True,
+                             memory=memory
+                             )
+    return agent
+    # return AgentExecutor(agent=agent, tools=tools, verbose=True, intermediate_step=True, return_only_ouput=True)
 
 chat_history = []
 
 @app.put("/conversation")
 def conversation(qa_params: request_models.AskAgent):
     message = qa_params.message
-    agent_executor = get_agent_executor()
-    result = agent_executor.invoke({"input": message, "chat_history": chat_history})
+    agent = get_agent_executor()
+    # result = agent.run({"input": message, "chat_history": chat_history}, return_only_ouput=True)
+    ans = agent.run(input=message)
     chat_history.append(HumanMessage(content=message))
-    chat_history.append(AIMessage(content=result['output']))
-
-    return response_models.AgentResponse(answer=result['output'], status="ok")
+    chat_history.append(AIMessage(content=ans))
+    return response_models.AgentResponse(answer=ans, status="ok")
