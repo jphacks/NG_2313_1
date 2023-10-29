@@ -1,8 +1,8 @@
 # jphacks2023_backend
 
 ## 概要
-このリポジトリは、[NG_2313 T.H.U.R.S.D.A.Y.](https://github.com/jphacks/NG_2313/tree/master)のバックエンドのリポジトリです。
-
+このリポジトリは、NG_2313のアプリT.H.U.R.S.D.A.Y.のバックエンドのリポジトリです。
+フロントエンドのリポジトリは[こちら](https://github.com/jphacks/NG_2313/tree/master)。
 
 ## 使い方
 ### OpenAI APIキーの発行
