@@ -104,7 +104,7 @@ def question(qa_params: request_models.AskAgent):
         verbose=False)
 
     # 10. 質問に対する解答を取得
-    result = qa({"question": qa_params.message}, return_only_outputs=True)
+    result = qa({"question": qa_params.message + "日本語で答えてください。"}, return_only_outputs=True)
 
     # 12. レスポンスをPUTで返す
     return response_models.AskQuestionResponse(answer=result['answer'], status="ok")
