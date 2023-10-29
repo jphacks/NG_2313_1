@@ -23,6 +23,7 @@ from langchain.prompts import PromptTemplate, ChatPromptTemplate, MessagesPlaceh
 from langchain.tools.render import format_tool_to_openai_function
 from langchain.tools import DuckDuckGoSearchRun
 from langchain.schema.messages import HumanMessage, AIMessage
+from langchain.document_loaders import TextLoader
 
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
@@ -67,8 +68,26 @@ def qdrants_load(collection_name):
         embeddings=EMBEDDING_MODEL
     )
 
+def read_files_in_pdf_dir():
+    docs = []
+    for filename in os.listdir("./pdf/"):
+        filepath = os.path.join(directory_path, filename)
+        if filename.endswith('.txt'):
+            loader = TextLoader(filepath)
+            text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+            pages = loader.load_and_split(text_splitter)
+            docs.append(pages)
+        elif filename.endswith('.pdf'):
+            loader = TextLoader(filepath)
+            text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+            pages = loader.load_and_split(text_splitter)
+            contents[file_name] = pages
+            docs.append(pages)
+    if len(docs) != 0:
+        qdrant = qdrants_load(COLLECTION_NAME)
+        qdrant.add_documents(docs)
 
-
+read_files_in_pdf_dir()
 llm = ChatOpenAI(model_name='gpt-3.5-turbo-16k', openai_api_key=settings.OPENAI_API_KEY)
 
 @app.put("/pdf")
@@ -86,8 +105,6 @@ def read_pdf(input_value: request_models.StorePDF):
 
     return "OK"
 
-
-
 @app.put("/question")
 def question(qa_params: request_models.AskAgent):
     qdrant = qdrants_load(COLLECTION_NAME)
@@ -103,34 +120,8 @@ def question(qa_params: request_models.AskAgent):
         return_source_documents=False,
         verbose=False)
 
-    # 10. 質問に対する解答を取得
     result = qa({"question": qa_params.question}, return_only_outputs=True)
-
-    # 12. レスポンスをPUTで返す
     return response_models.AskQuestionResponse(answer=result['answer'], status="ok")
-
-
-# def qdrants_load(collection_name):
-#     client = QdrantClient(path=QDRANT_PATH, port=6333)
-
-#     # すべてのコレクション名を取得
-#     collections = client.get_collections().collections
-#     collection_names = [collection.name for collection in collections]
-
-#     # コレクションが存在しなければ作成
-#     if collection_name not in collection_names:
-#         # コレクションが存在しない場合、新しく作成します
-#         client.create_collection(
-#             collection_name=collection_name,
-#             vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
-#         )
-#         print('collection created')
-
-#     return Qdrant(
-#         client=client,
-#         collection_name=collection_name,
-#         embeddings=EMBEDDING_MODEL
-#     )
 
 def get_agent_executor():
     search = DuckDuckGoSearchRun()
@@ -146,6 +137,7 @@ def get_agent_executor():
         #     func=qa.run,
         #     description="ユーザーが意図したテキストを検索する必要がある場合に便利です。"
         # )
+        
     ]
 
     # memory = ConversationBufferMemory(
@@ -183,3 +175,4 @@ def conversation(qa_params: request_models.AskAgent):
     chat_history.append(HumanMessage(content=message))
     chat_history.append(AIMessage(content=result['output']))
     return response_models.AgentResponse(answer=result['output'], status="ok")
+

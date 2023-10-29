@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 from typing import List
 
-class StorePDF(BaseModel):
-    pdf: str
+class ReadDocs(BaseModel):
+    doc_path: str
 
 class AskAgent(BaseModel):
     message: str
