@@ -4,10 +4,11 @@ import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from langchain.chains import RetrievalQA
+from langchain.chains import RetrievalQA, RetrievalQAWithSourcesChain
 from langchain.document_loaders import PyPDFLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
+from langchain.llms import OpenAI
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import Qdrant
 
@@ -106,7 +107,7 @@ def question(qa_params: request_models.AskAgent):
     result = qa({"question": qa_params.question}, return_only_outputs=True)
 
     # 12. レスポンスをPUTで返す
-    return respond_models.AskQuestionResponse(answer=result['answer'], status="ok")
+    return response_models.AskQuestionResponse(answer=result['answer'], status="ok")
 
 
 # def qdrants_load(collection_name):
@@ -132,18 +133,6 @@ def question(qa_params: request_models.AskAgent):
 #     )
 
 def get_agent_executor():
-    qdrant = qdrants_load(COLLECTION_NAME)
-    retriever = qdrant.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": 10}
-    )
-    qa = RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=retriever,
-        return_source_documents=True,
-        verbose=False)
-
     search = DuckDuckGoSearchRun()
 
     tools = [
