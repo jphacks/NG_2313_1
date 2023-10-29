@@ -120,14 +120,8 @@ def question(qa_params: request_models.AskAgent):
         return_source_documents=False,
         verbose=False)
 
-<<<<<<< HEAD
-    result = qa({"question": qa_params.question}, return_only_outputs=True)
-=======
-    # 10. 質問に対する解答を取得
+    # result = qa({"question": qa_params.question}, return_only_outputs=True)
     result = qa({"question": qa_params.message.replace("pdf", "") + "この質問の返答を日本語で答えてください。"}, return_only_outputs=True)
-
-    # 12. レスポンスをPUTで返す
->>>>>>> 74c86364220b82d3e155b7d97f7449457b109600
     return response_models.AskQuestionResponse(answer=result['answer'], status="ok")
 
 def get_agent_executor():
