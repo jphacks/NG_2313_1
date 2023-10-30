@@ -106,6 +106,21 @@ def read_pdf(input_value: request_models.StorePDF):
 
     return "OK"
 
+@app.put("/text")
+def read_pdf(input_value: request_models.StoreText):
+    text_data = input_value.text
+    with TemporaryDirectory() as tempdir:
+        file_name = f"{tempdir}/1.text"
+        with open(file_name, "wb") as f:
+            f.write(text_data)
+        loader = TextLoader(f"{tempdir}/1.txt")
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        pages = loader.load_and_split(text_splitter)
+    qdrant = qdrants_load(COLLECTION_NAME)
+    qdrant.add_documents(pages)
+
+    return "OK"
+
 @app.put("/question")
 def question(qa_params: request_models.AskAgent):
     qdrant = qdrants_load(COLLECTION_NAME)

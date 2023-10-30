@@ -7,5 +7,8 @@ class ReadDocs(BaseModel):
 class StorePDF(BaseModel):
     pdf: str
 
+class StoreText(BaseModel):
+    text: str
+
 class AskAgent(BaseModel):
     message: str
